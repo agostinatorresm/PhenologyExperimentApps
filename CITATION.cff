@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use these apps, please cite them as below."
+title: "PhenologyExperimentApps: PhenoTracker and BeeTracker field apps"
+type: software
+authors:
+  - given-names: Giulia
+    family-names: Rocca
+    affiliation: "Plant Ecology Group, ETH Zürich"
+  - given-names: Andrina
+    family-names: Zellweger
+    affiliation: "Plant Ecology Group, ETH Zürich"
+  - given-names: Janneke
+    family-names: Hille Ris Lambers
+    affiliation: "Plant Ecology Group, ETH Zürich"
+  - given-names: Agostina
+    family-names: Torres
+    affiliation: "Plant Ecology Group, ETH Zürich"
+    website: "https://agostinatorresm.github.io"
+abstract: "Browser-based field apps for plant–pollinator experiments: PhenoTracker records flower phenology per pot; BeeTracker times bumblebee visits to flower species."
+repository-code: "https://github.com/agostinatorresm/PhenologyExperimentApps"
+url: "https://agostinatorresm.github.io/PhenologyExperimentApps/"
+version: 1.0.0
+date-released: 2026-09-24
+keywords:
+  - phenology
+  - pollination
+  - bumblebee
+  - field data collection
