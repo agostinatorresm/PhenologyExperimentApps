@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2d6a4f">
+<title>PhenoTracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: monospace; background: #f5f0eb; color: #1a1410; min-height: 100vh; padding-bottom: 40px; }
+
+  header { background: #2d6a4f; color: white; padding: 16px; position: sticky; top: 0; z-index: 10; }
+  header h1 { font-family: Georgia, serif; font-size: 22px; }
+  header p  { font-size: 11px; opacity: .75; margin-top: 2px; text-transform: uppercase; letter-spacing: .05em; }
+
+  .main { padding: 14px; display: flex; flex-direction: column; gap: 12px; padding-bottom: 80px; }
+  .card { background: #fffdf9; border-radius: 12px; padding: 16px; border: 1px solid #d9cfc6; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+  .sl { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: #7a6e65; display: block; margin-bottom: 8px; }
+  .fl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #7a6e65; display: block; margin-bottom: 4px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  select, input[type=text], input[type=number], input[type=date], textarea {
+    font-family: monospace; font-size: 15px;
+    border: 1.5px solid #d9cfc6; border-radius: 8px;
+    padding: 9px 11px; background: #f5f0eb; color: #1a1410;
+    width: 100%; display: block; -webkit-appearance: none; appearance: none;
+  }
+  select:focus, input:focus, textarea:focus { outline: none; border-color: #2d6a4f; background: white; }
+  textarea { resize: none; height: 68px; line-height: 1.5; }
+  .sel-wrap { position: relative; }
+  .sel-wrap::after { content: '▾'; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #7a6e65; }
+
+  /* compact pot-id chip inline with species/pot row */
+  .pot-chip { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; letter-spacing:.06em; border-radius:20px; padding:3px 10px; margin-top:6px; }
+  .pot-chip.e { background:#f5f0eb; color:#aaa; border:1px dashed #d9cfc6; font-weight:400; }
+  .pot-chip.f { background:#d8f3dc; color:#1b4332; }
+
+  .counters { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+  .c-block { display: flex; flex-direction: column; align-items: center; gap: 5px; width: 100%; }
+  .c-label { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+  .c-label.g { color: #52b788; } .c-label.o { color: #e07b30; } .c-label.m { color: #9d8189; }
+  .c-row { display: flex; width: 100%; border-radius: 10px; }
+  .c-row.g { border: 2px solid #52b788; } .c-row.o { border: 2px solid #e07b30; } .c-row.m { border: 2px solid #9d8189; }
+  .c-btn { width: 58px; min-width: 58px; height: 58px; border: none; background: #f5f0eb; font-size: 32px; font-weight: 900; font-family: Arial, sans-serif; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; user-select: none; -webkit-user-select: none; }
+  .c-btn:active { background: #e8e2da; }
+  .c-btn.g { color: #52b788; } .c-btn.o { color: #e07b30; } .c-btn.m { color: #9d8189; }
+  .c-btn.left { border-radius: 8px 0 0 8px; } .c-btn.right { border-radius: 0 8px 8px 0; }
+  .c-num { flex: 1; height: 58px; display: flex; align-items: center; justify-content: center; background: white; font-size: 24px; font-weight: 700; font-family: monospace; color: #1a1410; border-left: 1.5px solid #e8e2da; border-right: 1.5px solid #e8e2da; }
+
+  /* sticky add-record bar */
+  .sticky-add { position:fixed; bottom:0; left:0; right:0; z-index:50; background:#fffdf9; border-top:1px solid #d9cfc6; padding:10px 14px; padding-bottom:max(10px,env(safe-area-inset-bottom)); }
+  .btn-add { width:100%; padding:16px; border:none; border-radius:10px; background:#2d6a4f; color:white; font-family:monospace; font-size:15px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; cursor:pointer; }
+  .btn-add:active { background:#1b4332; }
+
+  .rec-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .badge { font-size: 11px; background: #2d6a4f; color: white; border-radius: 20px; padding: 2px 9px; }
+  .empty { text-align: center; color: #7a6e65; font-size: 12px; padding: 24px 0; }
+  .rec { border: 1px solid #d9cfc6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: #f5f0eb; display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; }
+  .rec-id { font-weight: 700; font-size: 14px; }
+  .rec-del { background: none; border: none; color: #7a6e65; font-size: 16px; cursor: pointer; padding: 0 2px; line-height: 1; }
+  .rec-del:active { color: #c0392b; }
+  .rec-pills { display: flex; gap: 6px; flex-wrap: wrap; grid-column: 1/-1; margin-top: 3px; }
+  .pill { font-size: 11px; padding: 2px 9px; border-radius: 20px; font-weight: 600; }
+  .pill.b { background: #d8f3dc; color: #1b4332; } .pill.o { background: #fde8d0; color: #7b3f00; } .pill.s { background: #ede0e5; color: #4a2332; }
+  .pill.c { background: #dce8f5; color: #1a3a5c; }
+
+  /* cage location toggle pills */
+  .hl-wrap { display:flex; gap:8px; align-items:center; margin-top:6px; }
+  .hl-pill { padding:5px 16px; border-radius:20px; border:1.5px solid #d9cfc6; background:#f5f0eb; font-family:monospace; font-size:12px; font-weight:700; cursor:pointer; color:#7a6e65; transition:background .15s,border-color .15s,color .15s; }
+  .hl-pill.sel { background:#1a3a5c; border-color:#1a3a5c; color:white; }
+  .hl-none { background:none; border:none; font-family:monospace; font-size:11px; color:#aaa; cursor:pointer; padding:0; text-decoration:underline; }
+  .rec-meta { font-size: 11px; color: #7a6e65; grid-column: 1/-1; margin-top: 2px; }
+
+  .exp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .exp-btn { padding: 13px 6px; border-radius: 10px; font-family: monospace; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; cursor: pointer; text-align: center; }
+  .exp-btn:active { opacity: .75; }
+  .eb-show  { background: white; color: #2d6a4f; border: 1.5px solid #2d6a4f; }
+  .eb-show.on { background: #2d6a4f; color: white; }
+  .eb-copy  { background: #2d6a4f; color: white; border: 1.5px solid #2d6a4f; }
+  .eb-clear { background: white; color: #7a6e65; border: 1.5px solid #d9cfc6; }
+
+  #tbl-area { display: none; margin-top: 14px; }
+  .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; border: 1px solid #d9cfc6; }
+  table { border-collapse: collapse; }
+  th { background: #d8f3dc; color: #2d6a4f; padding: 7px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; white-space: nowrap; border-right: 1px solid #b7dfc8; border-bottom: 2px solid #b7dfc8; }
+  td { padding: 7px 10px; font-size: 12px; white-space: nowrap; border-right: 1px solid #e8e2da; border-bottom: 1px solid #e8e2da; }
+  tr:nth-child(odd) td { background: #fffdf9; } tr:nth-child(even) td { background: #f5f0ef; }
+  .tbl-hint { font-size: 10px; color: #7a6e65; text-align: center; margin-top: 5px; }
+
+  #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px); background: #1a1410; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; z-index: 999; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,.3); transition: transform .25s, opacity .25s; opacity: 0; pointer-events: none; }
+  #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* Missing data modal */
+  #miss-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; align-items:center; justify-content:center; padding:20px; }
+  #miss-overlay.open { display:flex; }
+  #miss-modal { background:#fffdf9; border-radius:16px; padding:20px; width:100%; max-width:360px; box-shadow:0 8px 32px rgba(0,0,0,.2); }
+  #miss-modal h2 { font-family:Georgia,serif; font-size:17px; color:#1a1410; margin-bottom:4px; }
+  #miss-modal .miss-sub { font-size:11px; color:#7a6e65; text-transform:uppercase; letter-spacing:.08em; margin-bottom:14px; }
+  .miss-pot-id { font-weight:700; font-size:14px; background:#d8f3dc; color:#1b4332; border-radius:6px; padding:6px 10px; margin-bottom:14px; text-align:center; }
+  .miss-options { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+  .miss-opt { padding:11px 6px; border-radius:8px; border:1.5px solid #d9cfc6; background:#f5f0eb; font-family:monospace; font-size:13px; font-weight:700; cursor:pointer; text-align:center; color:#1a1410; transition:background .15s,border-color .15s; }
+  .miss-opt.sel { background:#1a1410; color:white; border-color:#1a1410; }
+  .miss-note-label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#7a6e65; margin-bottom:4px; }
+  #miss-custom { width:100%; font-family:monospace; font-size:14px; border:1.5px solid #d9cfc6; border-radius:8px; padding:9px 11px; background:#f5f0eb; color:#1a1410; resize:none; height:60px; margin-bottom:14px; }
+  #miss-custom:focus { outline:none; border-color:#2d6a4f; background:white; }
+  .miss-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .miss-save { padding:13px; border:none; border-radius:10px; background:#2d6a4f; color:white; font-family:monospace; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; cursor:pointer; }
+  .miss-save:active { background:#1b4332; }
+  .miss-cancel { padding:13px; border:1.5px solid #d9cfc6; border-radius:10px; background:white; color:#7a6e65; font-family:monospace; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; cursor:pointer; }
+</style>
+</head>
+<body>
+<header>
+  <h1>&#127800; PhenoTracker</h1>
+  <p>Phenological flower census</p>
+</header>
+<div class="main">
+  <div class="card">
+    <!-- date pill row: species | pot | date compact -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span class="sl" style="margin-bottom:0">New record</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#7a6e65">Date</span>
+        <input type="date" id="f-date" style="font-size:12px;padding:4px 8px;border-radius:20px;border:1.5px solid #d9cfc6;background:#f5f0eb;color:#1a1410;width:auto;display:inline-block;-webkit-appearance:none;appearance:none;">
+      </div>
+    </div>
+    <div class="grid2" style="margin-bottom:6px">
+      <div><label class="fl">Species</label>
+        <div class="sel-wrap">
+          <select id="f-spp">
+            <option value="">&#8212; select &#8212;</option>
+            <option>CEN</option><option>CEN2</option><option>ANT</option><option>AGR</option><option>PAP</option><option>STA</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label class="fl">Pot number</label>
+        <div style="display:flex;gap:6px;align-items:stretch">
+          <input type="number" id="f-pot" placeholder="e.g. 1" min="1" style="flex:1">
+          <button id="btn-next" title="Next pot" style="flex-shrink:0;width:48px;border:1.5px solid #2d6a4f;border-radius:8px;background:#d8f3dc;color:#2d6a4f;font-size:20px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#8594;</button>
+        </div>
+      </div>
+    </div>
+    <!-- compact pot-id chip -->
+    <div style="margin-bottom:10px"><span class="pot-chip e" id="f-prev">pot_id: &#8212;</span></div>
+
+    <!-- cage location -->
+    <div style="margin-bottom:12px">
+      <label class="fl">Cage ID <span style="font-weight:400;color:#aaa">(optional)</span></label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" id="f-cage" placeholder="e.g. C_04" style="flex:1;text-transform:uppercase;">
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+          <button class="hl-pill" id="hl-h" data-val="H">H</button>
+          <button class="hl-pill" id="hl-l" data-val="L">L</button>
+          <button class="hl-none" id="hl-clear" title="Clear H/L">&#10005;</button>
+        </div>
+      </div>
+    </div>
+
+    <span class="sl">Flower count</span>
+    <div class="counters">
+      <div class="c-block"><span class="c-label g">Buds</span>
+        <div class="c-row g"><button class="c-btn g left" id="dec-b">&#8722;</button><div class="c-num" id="val-b">0</div><button class="c-btn g right" id="inc-b">+</button></div>
+      </div>
+      <div class="c-block"><span class="c-label o">Open flowers</span>
+        <div class="c-row o"><button class="c-btn o left" id="dec-o">&#8722;</button><div class="c-num" id="val-o">0</div><button class="c-btn o right" id="inc-o">+</button></div>
+      </div>
+      <div class="c-block"><span class="c-label m">Senescent</span>
+        <div class="c-row m"><button class="c-btn m left" id="dec-s">&#8722;</button><div class="c-num" id="val-s">0</div><button class="c-btn m right" id="inc-s">+</button></div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px"><label class="fl">Notes</label><textarea id="f-notes" placeholder="Additional observations..."></textarea></div>
+  </div>
+
+  <div class="card">
+    <div class="rec-hdr"><span class="sl" style="margin-bottom:0">Records</span><span class="badge" id="badge">0</span></div>
+    <div id="rec-list"><div class="empty">No records yet</div></div>
+  </div>
+
+  <div class="card">
+    <span class="sl">Export</span>
+    <div class="exp-grid">
+      <button class="exp-btn eb-show" id="btn-show">Show table</button>
+      <button class="exp-btn eb-copy" id="btn-copy">Copy table</button>
+      <button class="exp-btn eb-save" id="btn-save">&#8595; Save CSV</button>
+      <button class="exp-btn eb-clear" id="btn-clear">Clear all</button>
+    </div>
+    <div id="tbl-area">
+      <div class="tbl-wrap"><table><thead id="tbl-head"></thead><tbody id="tbl-body"></tbody></table></div>
+      <div class="tbl-hint">scroll &#8594; for all columns</div>
+    </div>
+  </div>
+  <footer style="text-align:center;font-size:11px;color:#7a6e65;line-height:1.6;padding:8px 0 4px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;opacity:.8">Authors</div>Giulia Rocca &middot; Andrina Zellweger &middot; Janneke Hille Ris Lambers &middot; <a href="https://agostinatorresm.github.io" target="_blank" rel="noopener" style="color:#2d6a4f;text-decoration:underline">Agostina Torres</a><br>Plant Ecology Group, ETH Z&uuml;rich</footer>
+</div>
+<!-- sticky add button -->
+<div class="sticky-add">
+  <button class="btn-add" id="btn-add">+ Add record</button>
+</div>
+<div id="toast"></div>
+
+<!-- Missing data modal -->
+<div id="miss-overlay">
+  <div id="miss-modal">
+    <h2>&#9888; Missing data</h2>
+    <div class="miss-sub">Record a reason for this pot</div>
+    <div class="miss-pot-id" id="miss-pot-label">&#8212;</div>
+    <div class="miss-options">
+      <button class="miss-opt" data-val="missing">Missing</button>
+      <button class="miss-opt" data-val="dead">Dead</button>
+      <button class="miss-opt" data-val="excluded">Excluded</button>
+      <button class="miss-opt" data-val="not found">Not found</button>
+    </div>
+    <div class="miss-note-label">Or write a custom note</div>
+    <textarea id="miss-custom" placeholder="e.g. plant knocked over, wilting..."></textarea>
+    <div class="miss-actions">
+      <button class="miss-cancel" id="miss-cancel-btn">Cancel</button>
+      <button class="miss-save" id="miss-save-btn">Save record</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var COLS   = ["obs_date","cage_id","pot_id","species_code","n_buds","n_flowers","n_senescent","h_l","notes"];
+var LABELS = {obs_date:"Date",cage_id:"Cage_ID",pot_id:"Pot_ID",species_code:"Species",n_buds:"n_buds",n_flowers:"n_flowers",n_senescent:"n_senescent",h_l:"H_L",notes:"Notes"};
+var SPP_MAP = {CEN:"CENCYA",CEN2:"CENCYA",ANT:"ANTARV",AGR:"AGRGIT",PAP:"PAPRHO",STA:"STAANN"};
+var records = [];
+var counts  = {b:0,o:0,s:0};
+var tblOpen = false;
+var today   = new Date().toISOString().split("T")[0];
+
+try { records = JSON.parse(localStorage.getItem("fc3")||"[]"); } catch(e){}
+document.getElementById("f-date").value = today;
+
+function save(){ try{ localStorage.setItem("fc3",JSON.stringify(records)); }catch(e){} }
+function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function toast(msg){ var t=document.getElementById("toast"); t.textContent=msg; t.className="show"; setTimeout(function(){ t.className=""; },2200); }
+
+function updatePreview(){
+  var spp=document.getElementById("f-spp").value, num=(document.getElementById("f-pot").value||"").trim(), el=document.getElementById("f-prev");
+  if(spp&&num){
+    var sppBase=spp.replace(/\d+$/,"");
+    var padded=String(parseInt(num)).padStart(3,"0");
+    el.textContent=sppBase+"_"+padded;
+    el.className="pot-chip f";
+  } else {
+    el.textContent="pot_id: —";
+    el.className="pot-chip e";
+  }
+}
+document.getElementById("f-spp").addEventListener("change",updatePreview);
+document.getElementById("f-pot").addEventListener("input",updatePreview);
+
+// --- Cage H/L toggle ---
+document.querySelectorAll(".hl-pill").forEach(function(btn){
+  btn.addEventListener("click",function(){
+    if(hlSelected === this.getAttribute("data-val")){
+      hlSelected = "";
+      document.querySelectorAll(".hl-pill").forEach(function(b){ b.classList.remove("sel"); });
+    } else {
+      hlSelected = this.getAttribute("data-val");
+      document.querySelectorAll(".hl-pill").forEach(function(b){ b.classList.remove("sel"); });
+      this.classList.add("sel");
+    }
+  });
+});
+document.getElementById("hl-clear").addEventListener("click",function(){
+  hlSelected = "";
+  document.querySelectorAll(".hl-pill").forEach(function(b){ b.classList.remove("sel"); });
+});
+
+// --- Missing-data modal ---
+var missSelectedVal = "";
+var hlSelected     = "";   // "H", "L", or ""
+
+function openMissModal(){
+  var spp = document.getElementById("f-spp").value;
+  var num = (document.getElementById("f-pot").value||"").trim();
+  if(!spp){ toast("Select a species first"); return; }
+  if(!num){ toast("Enter pot number first"); return; }
+  var sppBase = spp.replace(/\d+$/,"");
+  var padded  = String(parseInt(num)).padStart(3,"0");
+  document.getElementById("miss-pot-label").textContent = "pot_id: "+sppBase+"_"+padded;
+  missSelectedVal = "";
+  document.getElementById("miss-custom").value = "";
+  document.querySelectorAll(".miss-opt").forEach(function(b){ b.classList.remove("sel"); });
+  document.getElementById("miss-overlay").classList.add("open");
+}
+
+function closeMissModal(){ document.getElementById("miss-overlay").classList.remove("open"); }
+
+document.querySelectorAll(".miss-opt").forEach(function(btn){
+  btn.addEventListener("click",function(){
+    document.querySelectorAll(".miss-opt").forEach(function(b){ b.classList.remove("sel"); });
+    this.classList.add("sel");
+    missSelectedVal = this.getAttribute("data-val");
+    document.getElementById("miss-custom").value = "";
+  });
+});
+
+document.getElementById("miss-custom").addEventListener("input",function(){
+  if(this.value.trim()){
+    missSelectedVal = "";
+    document.querySelectorAll(".miss-opt").forEach(function(b){ b.classList.remove("sel"); });
+  }
+});
+
+document.getElementById("miss-cancel-btn").addEventListener("click", closeMissModal);
+document.getElementById("miss-overlay").addEventListener("click",function(e){ if(e.target===this) closeMissModal(); });
+
+document.getElementById("miss-save-btn").addEventListener("click",function(){
+  var spp = document.getElementById("f-spp").value;
+  var num = (document.getElementById("f-pot").value||"").trim();
+  var dt  = document.getElementById("f-date").value;
+  if(!dt){ toast("Select a date"); return; }
+  var note = document.getElementById("miss-custom").value.trim() || missSelectedVal;
+  if(!note){ toast("Choose a status or write a note"); return; }
+  var code    = SPP_MAP[spp]||spp;
+  var sppBase = spp.replace(/\d+$/,"");
+  var padded  = String(parseInt(num)).padStart(3,"0");
+  var isoDate=dt.split("T")[0]; var cageVal=(document.getElementById("f-cage").value||"").trim().toUpperCase(); records.push({obs_date:isoDate,cage_id:cageVal,pot_id:sppBase+"_"+padded,species_code:code,n_buds:"",n_flowers:"",n_senescent:"",h_l:hlSelected,notes:note});
+  save(); renderRecords();
+  // advance pot
+  document.getElementById("f-pot").value = parseInt(num)+1;
+  updatePreview();
+  closeMissModal();
+  if(tblOpen) renderTable();
+  toast("Saved as \""+note+"\"");
+});
+
+document.getElementById("btn-next").addEventListener("click", openMissModal);
+
+function setupCounter(dId,iId,vId,k){
+  document.getElementById(dId).addEventListener("click",function(){ if(counts[k]>0)counts[k]--; document.getElementById(vId).textContent=counts[k]; });
+  document.getElementById(iId).addEventListener("click",function(){ counts[k]++; document.getElementById(vId).textContent=counts[k]; });
+}
+setupCounter("dec-b","inc-b","val-b","b");
+setupCounter("dec-o","inc-o","val-o","o");
+setupCounter("dec-s","inc-s","val-s","s");
+
+document.getElementById("btn-add").addEventListener("click",function(){
+  var spp=document.getElementById("f-spp").value, num=(document.getElementById("f-pot").value||"").trim(), dt=document.getElementById("f-date").value;
+  if(!spp){ toast("Select a species"); return; }
+  if(!num){ toast("Enter pot number"); return; }
+  if(!dt) { toast("Select a date");   return; }
+  var code=SPP_MAP[spp]||spp; var padded=String(parseInt(num)).padStart(3,"0"); var sppBase=spp.replace(/\d+$/,""); var isoDate=dt.split("T")[0]; var cageVal=(document.getElementById("f-cage").value||"").trim().toUpperCase(); records.push({obs_date:isoDate,cage_id:cageVal,pot_id:sppBase+"_"+padded,species_code:code,n_buds:counts.b,n_flowers:counts.o,n_senescent:counts.s,h_l:hlSelected,notes:document.getElementById("f-notes").value.trim()});
+  save(); renderRecords();
+  // keep species, advance pot number by 1
+  var curPot = parseInt(document.getElementById("f-pot").value)||0;
+  document.getElementById("f-pot").value = curPot + 1;
+  document.getElementById("f-notes").value="";
+  counts.b=0; counts.o=0; counts.s=0;
+  document.getElementById("val-b").textContent="0"; document.getElementById("val-o").textContent="0"; document.getElementById("val-s").textContent="0";
+  updatePreview(); if(tblOpen)renderTable(); toast("Record added → pot "+(curPot+1));
+});
+
+function renderRecords(){
+  var el=document.getElementById("rec-list"); document.getElementById("badge").textContent=records.length;
+  if(!records.length){ el.innerHTML='<div class="empty">No records yet</div>'; return; }
+  el.innerHTML=records.map(function(r,i){
+    var cagePill = r.cage_id ? '<span class="pill c">'+esc(r.cage_id)+(r.h_l?' '+esc(r.h_l):'')+"</span>" : '';
+    return '<div class="rec"><div class="rec-id">'+esc(r.pot_id)+'</div><button class="rec-del" data-i="'+i+'">&#10005;</button><div class="rec-pills">'+cagePill+'<span class="pill b">B: '+r.n_buds+'</span><span class="pill o">O: '+r.n_flowers+'</span><span class="pill s">S: '+r.n_senescent+'</span></div><div class="rec-meta">'+esc(r.obs_date)+(r.notes?' &middot; '+esc(r.notes.substring(0,50))+(r.notes.length>50?'...':''):'')+'</div></div>';
+  }).join("");
+  el.querySelectorAll(".rec-del").forEach(function(btn){
+    btn.addEventListener("click",function(){ var i=parseInt(this.getAttribute("data-i")); if(!confirm("Delete this record?"))return; records.splice(i,1); save(); renderRecords(); if(tblOpen)renderTable(); toast("Deleted"); });
+  });
+}
+
+function renderTable(){
+  document.getElementById("tbl-head").innerHTML="<tr>"+COLS.map(function(c){ return "<th>"+LABELS[c]+"</th>"; }).join("")+"</tr>";
+  document.getElementById("tbl-body").innerHTML=records.map(function(r){ return "<tr>"+COLS.map(function(c){ return "<td>"+esc(r[c]===undefined||r[c]===null?"":String(r[c]))+"</td>"; }).join("")+"</tr>"; }).join("");
+}
+
+document.getElementById("btn-show").addEventListener("click",function(){
+  tblOpen=!tblOpen; var area=document.getElementById("tbl-area"), btn=document.getElementById("btn-show");
+  if(tblOpen){ renderTable(); area.style.display="block"; btn.textContent="Hide table"; btn.classList.add("on"); }
+  else{ area.style.display="none"; btn.textContent="Show table"; btn.classList.remove("on"); }
+});
+
+function buildCSV(){
+  function q(v){ var s=(v===undefined||v===null)?"":String(v); return(s.indexOf(",")>=0||s.indexOf('"')>=0||s.indexOf("\n")>=0)?'"'+s.replace(/"/g,'""')+'"':s; }
+  return [COLS.join(",")].concat(records.map(function(r){ return COLS.map(function(c){ return q(r[c]); }).join(","); })).join("\n");
+}
+function buildHTMLtable(){
+  var ths=COLS.map(function(c){ return '<th style="background:#2d6a4f;color:white;padding:8px 12px;font-family:monospace;font-size:12px;border:1px solid #1b4332;text-align:left">'+LABELS[c]+'</th>'; }).join("");
+  var trs=records.map(function(r,i){ var bg=i%2===0?"#fffdf9":"#f5f0ef"; return "<tr>"+COLS.map(function(c){ return '<td style="padding:7px 12px;font-family:monospace;font-size:12px;border:1px solid #d9cfc6;background:'+bg+'">'+esc(r[c]===undefined||r[c]===null?"":String(r[c]))+"</td>"; }).join("")+"</tr>"; }).join("");
+  return '<table style="border-collapse:collapse"><thead><tr>'+ths+'</tr></thead><tbody>'+trs+'</tbody></table>';
+}
+
+document.getElementById("btn-copy").addEventListener("click",function(){
+  if(!records.length){ toast("No records yet"); return; }
+  var btn=this, csv=buildCSV(), htm=buildHTMLtable();
+  function ok(msg){ btn.textContent="✓ Copied"; setTimeout(function(){ btn.textContent="Copy table"; },2500); toast(msg); }
+  if(window.ClipboardItem){
+    navigator.clipboard.write([new ClipboardItem({"text/html":new Blob([htm],{type:"text/html"}),"text/plain":new Blob([csv],{type:"text/plain"})})]).then(function(){ ok("Copied as table!"); }).catch(function(){ navigator.clipboard.writeText(csv).then(function(){ ok("Copied as CSV"); }).catch(function(){ toast("Copy failed"); }); });
+  } else { navigator.clipboard.writeText(csv).then(function(){ ok("Copied as CSV"); }).catch(function(){ toast("Copy failed"); }); }
+});
+
+document.getElementById("btn-save").addEventListener("click",function(){
+  if(!records.length){ toast("No records yet"); return; }
+  var csv=buildCSV();
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download="flower_count_"+today+".csv";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  toast("CSV saved");
+});
+
+document.getElementById("btn-clear").addEventListener("click",function(){
+  if(!records.length){ toast("Nothing to clear"); return; }
+  if(!confirm("Delete all "+records.length+" records?"))return;
+  records=[]; save(); renderRecords(); if(tblOpen)renderTable(); toast("Cleared");
+});
+
+renderRecords();
+
+</script>
+</body>
+</html>
