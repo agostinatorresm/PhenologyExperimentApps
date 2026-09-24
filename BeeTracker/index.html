@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#ffffff">
+  <title>BeeTracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8f8f6; color: #1a1a1a; min-height: 100vh; }
+    .wrap { max-width: 620px; margin: 0 auto; padding: 1.25rem 1rem 2rem; }
+
+    /* ── Meta inputs ── */
+    .meta { display: grid; grid-template-columns: 1.2fr 1fr 1fr 70px 60px; gap: 8px; margin-bottom: 0.75rem; }
+    .meta label { font-size: 11px; color: #666; display: block; margin-bottom: 4px; font-weight: 500; }
+    .meta input, .meta select { width: 100%; font-size: 14px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; background: #fff; color: #1a1a1a; -webkit-appearance: none; }
+    .meta input:focus, .meta select:focus { outline: none; border-color: #378ADD; box-shadow: 0 0 0 3px rgba(55,138,221,0.15); }
+    .meta input.required-missing, .meta select.required-missing { border-color: #C0201E; background: #FFF5F5; }
+    @media (max-width: 420px) {
+      .meta { grid-template-columns: 1fr 1fr; }
+      .meta input, .meta select { font-size: 16px; }
+    }
+
+    /* ── Sheet fetch row ── */
+    .sheet-row { display: flex; gap: 8px; align-items: center; margin-bottom: 1rem; }
+    .sheet-status { font-size: 12px; color: #888; flex: 1; min-width: 0; }
+    .sheet-status.ok   { color: #0E7A50; }
+    .sheet-status.warn { color: #C47A08; }
+    .sheet-status.err  { color: #C0201E; }
+    .btn-sheet { font-size: 13px; font-weight: 500; padding: 7px 14px; border-radius: 10px; border: 1px solid #B5D4F4; background: #E6F1FB; color: #0C447C; cursor: pointer; white-space: nowrap; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+    .btn-sheet:active { background: #d0e6f7; }
+    .btn-sheet:disabled { opacity: 0.5; cursor: default; }
+
+    /* ── Flower counters ── */
+    .flower-section-label { font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px; }
+    .flower-counters { display: grid; grid-template-columns: repeat(5,1fr); gap: 7px; margin-bottom: 1.25rem; }
+    .flower-counter { background:#fff; border:1.5px solid #e0e0db; border-radius:10px; padding:6px 4px; display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .flower-counter.required-missing { border-color: #C0201E; background: #FFF5F5; }
+    .fc-label { font-size:10px; font-weight:700; letter-spacing:0.04em; }
+    .fc-controls { display:flex; align-items:center; gap:4px; }
+    .fc-btn { width:24px;height:24px;border-radius:50%;border:1.5px solid #ccc;background:#f5f5f3;font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:600;color:#444;-webkit-tap-highlight-color:transparent;flex-shrink:0; }
+    .fc-btn:active { background:#e8e8e5; }
+    .fc-val { font-size:17px; font-weight:600; min-width:24px; text-align:center; font-variant-numeric:tabular-nums; }
+    @media (max-width: 420px) {
+      .flower-counters { grid-template-columns: repeat(3,1fr); gap: 6px; }
+      .flower-counter:nth-child(4) { grid-column: 1; }
+      .flower-counter:nth-child(5) { grid-column: 2; }
+      .fc-btn { width:28px; height:28px; font-size:17px; }
+      .fc-val  { font-size:18px; }
+    }
+
+    /* ── Session bars ── */
+    .session-bars { margin-bottom: 0.75rem; }
+    .session-bar { font-size: 13px; text-align: center; min-height: 20px; font-weight: 600; letter-spacing: 0.02em; line-height: 1.6; }
+    .session-idle    { color: #aaa; font-weight: 400; font-size: 12px; }
+    .session-live    { color: #1A5FAD; }
+    .session-warn    { color: #C47A08; }
+    .session-paused  { color: #888; }
+    .session-ended   { color: #C0201E; }
+    .session-overrun { color: #7B3F9E; }
+    .status-bar { font-size: 12px; color: #888; text-align: center; margin-bottom: 1rem; min-height: 18px; }
+    .active-indicator { color: #1D9E75; font-weight: 500; }
+
+    /* ── Timers grid ── */
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.25rem; }
+    .btn-timer { border: 3px solid; border-radius: 14px; padding: 1rem 0.5rem; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; transition: transform 0.08s; user-select: none; -webkit-user-select: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent; width: 100%; }
+    .btn-timer:active { transform: scale(0.94); }
+    .btn-label { font-size: 13px; font-weight: 600; letter-spacing: 0.03em; }
+    .btn-time  { font-size: 21px; font-weight: 500; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+    .btn-count { font-size: 11px; opacity: 0.65; }
+    .grid.disabled { pointer-events: none; opacity: 0.4; }
+
+    /* ── Controls ── */
+    .controls { display: flex; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .controls button { flex: 1; min-width: 80px; font-size: 14px; padding: 10px 0; border-radius: 10px; border: 1px solid #ddd; background: #fff; color: #1a1a1a; cursor: pointer; font-weight: 500; -webkit-tap-highlight-color: transparent; }
+    .controls button:active { background: #f0f0f0; }
+    .controls button.primary  { background: #E6F1FB; color: #0C447C; border-color: #B5D4F4; }
+    .controls button.success  { background: #E1F5EE; color: #054530; border-color: #7FCFAA; }
+    .controls button.pause    { background: #FFF8E6; color: #854F0B; border-color: #F5D27A; }
+    .controls button.resume   { background: #E1F5EE; color: #054530; border-color: #7FCFAA; }
+    .controls button.danger   { background: #FFF0EF; color: #7A1210; border-color: #F5B5B3; }
+    .controls button:disabled { opacity: 0.4; cursor: default; }
+
+    /* ── Notes ── */
+    .notes-wrap { margin-bottom: 1.25rem; }
+    .notes-wrap label { font-size: 11px; color: #666; font-weight: 500; display: block; margin-bottom: 4px; }
+    .notes-wrap textarea { width: 100%; font-size: 14px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 10px; background: #fff; color: #1a1a1a; resize: vertical; min-height: 60px; font-family: inherit; }
+    .notes-wrap textarea:focus { outline: none; border-color: #378ADD; box-shadow: 0 0 0 3px rgba(55,138,221,0.15); }
+
+    /* ── Log ── */
+    .section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .section-head span { font-size: 13px; font-weight: 600; color: #555; }
+    .section-head button { font-size: 12px; padding: 4px 12px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: #666; cursor: pointer; }
+    .log { background: #fff; border: 1px solid #e8e8e8; border-radius: 12px; max-height: 280px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .log-empty { padding: 2rem; text-align: center; font-size: 13px; color: #aaa; }
+    .log-row { display: grid; grid-template-columns: 22px 1fr auto auto; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #f0f0f0; font-size: 12px; }
+    .log-row:last-child { border-bottom: none; }
+    .log-row.deleted { opacity: 0.35; text-decoration: line-through; }
+    .log-seq { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; flex-shrink: 0; }
+    .log-main { min-width: 0; }
+    .log-sp  { font-weight: 600; color: #1a1a1a; white-space: nowrap; display: flex; align-items: center; gap: 4px; }
+    .log-meta { font-size: 11px; color: #888; }
+    .log-dur { font-size: 12px; font-variant-numeric: tabular-nums; color: #aaa; text-align: right; white-space: nowrap; }
+    .log-dur.live { color: #1D9E75; font-weight: 600; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .log-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .log-btn { font-size: 11px; padding: 3px 7px; border-radius: 6px; border: 1px solid #e0e0dc; background: #f5f5f3; color: #555; cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+    .log-btn:active { background: #e8e8e5; }
+    .log-btn.del { color: #C0201E; border-color: #F5B5B3; background: #FFF0EF; }
+
+    /* ── Export ── */
+    #export-area { margin-top: 1rem; display: none; }
+    #export-area > p { font-size: 12px; color: #666; margin-bottom: 6px; }
+    #export-header { font-family: 'Menlo','Courier New',monospace; font-size: 11px; color: #888; background: #f0efe9; border: 1px solid #ddd; border-bottom: none; border-radius: 10px 10px 0 0; padding: 8px 10px; white-space: pre; overflow-x: auto; }
+    #csv-out { width: 100%; height: 130px; font-family: 'Menlo','Courier New',monospace; font-size: 11px; border: 1px solid #ddd; border-radius: 0 0 10px 10px; background: #f8f8f6; color: #1a1a1a; padding: 10px; resize: vertical; display: block; }
+    .export-btns { display: flex; gap: 8px; margin-top: 6px; }
+    .export-btns button { flex: 1; padding: 9px; font-size: 14px; border-radius: 10px; border: 1px solid #ddd; background: #fff; color: #1a1a1a; cursor: pointer; font-weight: 500; }
+    #download-btn { background: #E6F1FB; color: #0C447C; border-color: #B5D4F4; }
+    #submit-status { font-size: 12px; color: #666; text-align: center; margin-top: 8px; min-height: 18px; }
+    #submit-status.ok  { color: #0E7A50; font-weight: 600; }
+    #submit-status.err { color: #C0201E; }
+
+    /* ── Modal dialogs ── */
+    .modal-overlay { display:none; position:fixed; inset:0; z-index:9998; background:rgba(0,0,0,0.45); align-items:center; justify-content:center; }
+    .modal-overlay.active { display:flex; }
+    .modal-box { background:#fff; border-radius:16px; padding:24px 22px; max-width:340px; width:92%; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.18); }
+    .modal-box h3 { font-size:16px; margin-bottom:10px; }
+    .modal-box p  { font-size:13px; color:#444; margin-bottom:16px; line-height:1.55; }
+    .modal-box .sub { font-size:12px; color:#888; margin-top:-10px; margin-bottom:16px; }
+    .cbtn { display:flex; gap:10px; }
+    .cbtn button { flex:1; padding:10px; border-radius:10px; font-size:14px; font-weight:500; cursor:pointer; border:1px solid #ddd; -webkit-tap-highlight-color:transparent; }
+    .cbtn .btn-cancel  { background:#fff; color:#444; }
+    .cbtn .btn-danger  { background:#FFEDED; color:#7A1210; border-color:#F5B5B3; }
+    .cbtn .btn-overrun { background:#F3EAFE; color:#5B2D8E; border-color:#C9A5F0; }
+    .cbtn .btn-end     { background:#FFF0EF; color:#7A1210; border-color:#F5B5B3; }
+    .cbtn .btn-primary { background:#E6F1FB; color:#0C447C; border-color:#B5D4F4; }
+    #cage-input-wrap { margin-bottom: 16px; text-align:left; }
+    #cage-input-wrap label { font-size:12px; font-weight:600; color:#555; display:block; margin-bottom:5px; }
+    #cage-input-wrap input { width:100%; font-size:15px; padding:9px 12px; border:1.5px solid #C0201E; border-radius:10px; background:#FFF5F5; color:#1a1a1a; -webkit-appearance:none; }
+    #cage-input-wrap input:focus { outline:none; border-color:#378ADD; background:#fff; box-shadow:0 0 0 3px rgba(55,138,221,0.15); }
+
+    /* ── Edit species modal ── */
+    #edit-species-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px; }
+    .edit-sp-btn { padding:10px 6px; border-radius:10px; border:2px solid; font-size:13px; font-weight:700; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+    .edit-sp-btn:active { opacity:0.8; }
+
+    /* ── Fullscreen overlay ── */
+    #fs-overlay { display:none; position:fixed; inset:0; z-index:9999; background:#f8f8f6; flex-direction:column; touch-action:none; overflow:hidden; user-select:none; -webkit-user-select:none; }
+    #fs-overlay.active { display:flex; }
+    #fs-top { display:flex; align-items:center; justify-content:space-between; padding:10px 14px 8px; flex-shrink:0; gap:12px; border-bottom:1px solid #e0e0dc; }
+    #fs-top-left { flex:1; min-width:0; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    #fs-countdown { font-size:36px; font-weight:700; letter-spacing:0.02em; font-variant-numeric:tabular-nums; line-height:1; flex-shrink:0; }
+    #fs-visitation { font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; line-height:1; flex-shrink:0; }
+    #fs-info-pills { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+    .fs-pill { font-size:13px; font-weight:500; padding:4px 11px; border-radius:20px; background:#e4e3de; color:#222; white-space:nowrap; line-height:1.3; }
+    .fs-pill span { color:#777; margin-right:4px; font-weight:400; font-size:11px; }
+    #fs-exit { font-size:13px; font-weight:500; padding:6px 14px; border-radius:20px; border:1.5px solid #bbb; background:#fff; color:#444; cursor:pointer; white-space:nowrap; flex-shrink:0; -webkit-tap-highlight-color:transparent; }
+    #fs-status { font-size:13px; color:#888; text-align:center; padding:4px 14px; flex-shrink:0; min-height:22px; }
+    #fs-grid { flex:1; display:grid; grid-template-columns:repeat(3,1fr); gap:10px; padding:8px 10px 10px; overflow:hidden; }
+    .fs-btn { border:3px solid; border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; cursor:pointer; transition:transform 0.08s; -webkit-tap-highlight-color:transparent; touch-action:manipulation; min-height:0; }
+    .fs-btn:active { transform:scale(0.94); }
+    .fs-label { font-size:15px; font-weight:700; letter-spacing:0.04em; }
+    .fs-time  { font-size:28px; font-weight:500; font-variant-numeric:tabular-nums; }
+    .fs-count { font-size:12px; opacity:0.65; }
+    .fs-btn.fsdisabled { pointer-events:none; opacity:0.4; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+    <h1 style="margin:0">BeeTracker</h1>
+    <button id="fsBtn" style="font-size:13px;font-weight:500;padding:6px 14px;border-radius:20px;border:1.5px solid #bbb;background:#fff;color:#444;cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;">⛶ Field mode</button>
+  </div>
+
+  <div class="meta">
+    <div>
+      <label for="observerId">Observer</label>
+      <input type="text" id="observerId" placeholder="e.g. initials" autocomplete="off">
+    </div>
+    <div>
+      <label for="cageId">Cage ID <span style="color:#C0201E">*</span></label>
+      <select id="cageId">
+        <option value="">— select —</option>
+      </select>
+    </div>
+    <div>
+      <label for="bbId">BB ID</label>
+      <input type="number" id="bbId" placeholder="1" min="1" autocomplete="off">
+    </div>
+    <div>
+      <label for="obsMin">Min</label>
+      <input type="number" id="obsMin" value="10" min="1" max="999" autocomplete="off">
+    </div>
+    <div>
+      <label for="threshPct">% visit</label>
+      <input type="number" id="threshPct" value="25" min="1" max="100" autocomplete="off">
+    </div>
+  </div>
+
+  <div class="sheet-row">
+    <button class="btn-sheet" id="loadBtn">⬇ Load from sheet</button>
+    <span class="sheet-status" id="sheetStatus">Select a Cage ID then load flower counts</span>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+    <span class="flower-section-label">Flowers per species <span style="color:#C0201E">*</span></span>
+    <span id="flowerTotal" style="font-size:11px;color:#888;font-weight:500;"></span>
+  </div>
+  <div class="flower-counters" id="flowerCounters"></div>
+
+  <div class="session-bars">
+    <div class="session-bar" id="sessionBar"><span class="session-idle">Press ▶ Start Session when ready</span></div>
+    <div class="session-bar" id="visitBar" style="font-size:12px;color:#555;font-weight:500;min-height:16px;"></div>
+  </div>
+  <div class="status-bar" id="statusBar"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="controls">
+    <button id="startBtn"  class="success">▶ Start Session</button>
+    <button id="pauseBtn"  class="pause"   style="display:none">⏸ Pause</button>
+    <button id="resumeBtn" class="resume"  style="display:none">▶ Resume</button>
+    <button id="endBtn"    class="danger"  style="display:none">⏹ End Session</button>
+    <button id="resetAll"  class="danger">↺ Restart</button>
+    <button id="exportBtn" class="primary">Export CSV</button>
+  </div>
+
+  <!-- Notes -->
+  <div class="notes-wrap">
+    <label for="sessionNotes">Session notes</label>
+    <textarea id="sessionNotes" placeholder="e.g. bee was very active, weather changed at 10:30…"></textarea>
+  </div>
+
+  <div class="section-head">
+    <span>Visit log</span>
+    <button id="clearLog">Clear</button>
+  </div>
+  <div class="log" id="log"><div class="log-empty">Press a flower button to start tracking</div></div>
+
+  <div id="export-area">
+    <p>Header row (reference only — data rows below are what gets exported):</p>
+    <div id="export-header"></div>
+    <textarea id="csv-out" readonly></textarea>
+    <div class="export-btns">
+      <button id="download-btn">⬇ Download CSV</button>
+      <button id="submit-btn" style="background:#E1F5EE;color:#054530;border-color:#7FCFAA;">⬆ Submit to Sheet</button>
+    </div>
+    <div id="submit-status"></div>
+  </div>
+  <footer style="text-align:center;font-size:11px;color:#888;line-height:1.6;margin-top:2rem;padding-top:1rem;border-top:1px solid #e8e8e8"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;opacity:.8">Authors</div>Giulia Rocca &middot; Andrina Zellweger &middot; <a href="https://agostinatorresm.github.io" target="_blank" rel="noopener" style="color:#1A5FAD;text-decoration:underline">Agostina Torres</a><br>Plant Ecology Group, ETH Z&uuml;rich</footer>
+</div>
+
+<!-- Reset confirmation -->
+<div class="modal-overlay" id="confirm-overlay">
+  <div class="modal-box">
+    <h3>⚠️ Reset session?</h3>
+    <p>Export or submit your data first — all visit data will be permanently deleted.</p>
+    <div class="cbtn">
+      <button class="btn-cancel" id="confirm-cancel">Cancel</button>
+      <button class="btn-danger" id="confirm-ok">Yes, reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cage ID required -->
+<div class="modal-overlay" id="cage-overlay">
+  <div class="modal-box">
+    <h3>🏷️ Cage ID required</h3>
+    <p>Please select a Cage ID before starting the session.</p>
+    <div class="cbtn" style="justify-content:center;">
+      <button class="btn-cancel" id="cage-cancel">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Condition-reached dialog -->
+<div class="modal-overlay" id="condition-overlay">
+  <div class="modal-box">
+    <h3 id="cond-title"></h3>
+    <p id="cond-body"></p>
+    <p class="sub" id="cond-sub"></p>
+    <div class="cbtn">
+      <button class="btn-end"     id="cond-end">⏹ End session</button>
+      <button class="btn-overrun" id="cond-overrun">▶ Continue (overrun)</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit species modal -->
+<div class="modal-overlay" id="edit-overlay">
+  <div class="modal-box">
+    <h3 style="margin-bottom:14px">Change species</h3>
+    <div id="edit-species-grid"></div>
+    <div class="cbtn">
+      <button class="btn-cancel" id="edit-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Fullscreen overlay -->
+<div id="fs-overlay">
+  <div id="fs-top">
+    <div id="fs-top-left">
+      <div id="fs-countdown"></div>
+      <div id="fs-visitation"></div>
+      <div id="fs-info-pills"></div>
+    </div>
+    <button id="fs-exit">✕ Exit</button>
+  </div>
+  <div id="fs-status"></div>
+  <div id="fs-grid"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONFIGURATION — paste your Apps Script Web App URL here
+// ═══════════════════════════════════════════════════════════════════════════════
+// Leave empty in the public version. Each user pastes their own Apps Script URL here.
+const SHEET_URL = "";
+
+// ── Species ───────────────────────────────────────────────────────────────────
+const SPECIES = [
+  { label: 'PAPRHO', bg: '#FFEDED', border: '#C0201E', text: '#7A1210', dot: '#C0201E' },
+  { label: 'CENCYA', bg: '#D6E8FA', border: '#1A5FAD', text: '#0A3366', dot: '#1A5FAD' },
+  { label: 'AGRGIT', bg: '#FAD9E8', border: '#B02862', text: '#6B1239', dot: '#B02862' },
+  { label: 'ANTARV', bg: '#FAE8C0', border: '#C47A08', text: '#6B3F00', dot: '#C47A08' },
+  { label: 'STAANN', bg: '#C8EFE0', border: '#0E7A50', text: '#054530', dot: '#0E7A50' },
+  { label: 'FLIGHT', bg: '#DDDBD4', border: '#555450', text: '#1A1A18', dot: '#555450' },
+];
+const FLIGHT_IDX = 5;
+
+const flowerCounts = [0, 0, 0, 0, 0];
+const state = SPECIES.map((_, i) => ({ id: i, running: false, startTime: null, elapsed: 0, visitCount: 0 }));
+let log = [], seq = 0, activeIdx = null;
+
+let sessionStart = null, sessionEnd = null, sessionTimeoutId = null;
+let sessionOver = false, sessionPaused = false;
+let sessionReady = false; // unlocked but clock not yet started
+let pauseStart = null, totalPaused = 0;
+let boutThreshold = null, boutTotalFlowers = null, boutPct = null;
+let overrunCondition = null;
+
+const sheetConnected = SHEET_URL !== "";
+let lastLoadedData = null;
+
+// ── Edit state ────────────────────────────────────────────────────────────────
+let editTargetSeq = null; // seq number of the log entry being edited
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function getObsMs() { const v=parseFloat(document.getElementById('obsMin').value); return(isNaN(v)||v<=0?10:v)*60000; }
+function getThreshPct() { const v=parseFloat(document.getElementById('threshPct').value); return(isNaN(v)||v<=0?25:Math.min(v,100)); }
+function totalFlowers() { return flowerCounts.reduce((a,b)=>a+b,0); }
+function fmt(ms) {
+  if(ms<0)ms=0;
+  const s=Math.floor(ms/1000),m=Math.floor(s/60),h=Math.floor(m/60);
+  if(h>0)return`${h}:${String(m%60).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  return`${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}.${Math.floor((ms%1000)/100)}`;
+}
+function fmtDate(ts){const d=new Date(ts);return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function fmtTime(ts){const d=new Date(ts);return`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;}
+function toSeconds(ms){return Math.round(ms/1000);}
+function nonFlightVisits(){return log.filter(e=>e.endTime&&!e.deleted&&e.id!==FLIGHT_IDX).length;}
+function visitationPct(){if(!boutTotalFlowers||boutTotalFlowers===0)return 0;return Math.min(100,nonFlightVisits()/boutTotalFlowers*100);}
+function sessionElapsed(){if(!sessionStart)return 0;const p=sessionPaused?totalPaused+(Date.now()-pauseStart):totalPaused;return(Date.now()-sessionStart)-p;}
+
+// ── Switch logic ──────────────────────────────────────────────────────────────
+// Only considers non-deleted entries. FLIGHT is always 0 and transparent.
+function computeSwitches(completedLog) {
+  let lastId = null;
+  return completedLog.map(e => {
+    if (e.id === FLIGHT_IDX) return 0;
+    if (lastId === null) { lastId = e.id; return 0; }
+    const sw = e.id !== lastId ? 1 : 0;
+    lastId = e.id;
+    return sw;
+  });
+}
+
+// ── JSONP helper ──────────────────────────────────────────────────────────────
+function fetchJSONP(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = '_bb_cb_' + Math.random().toString(36).slice(2);
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Request timed out')); }, 10000);
+    function cleanup() { clearTimeout(timeout); delete window[cbName]; if(script.parentNode)script.parentNode.removeChild(script); }
+    window[cbName] = data => { cleanup(); resolve(data); };
+    script.onerror = () => { cleanup(); reject(new Error('Network error')); };
+    script.src = url + (url.includes('?')?'&':'?') + `callback=${cbName}`;
+    document.head.appendChild(script);
+  });
+}
+
+// ── Sheet: cage list ──────────────────────────────────────────────────────────
+async function loadCageList() {
+  if(!sheetConnected)return;
+  try {
+    const data = await fetchJSONP(`${SHEET_URL}?action=getCages`);
+    if(data.error)return;
+    const sel=document.getElementById('cageId'),cur=sel.value;
+    sel.innerHTML='<option value="">— select —</option>';
+    (data.cages||[]).forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;if(c===cur)o.selected=true;sel.appendChild(o);});
+  } catch(e){}
+}
+
+// ── Sheet: load flower counts ─────────────────────────────────────────────────
+async function loadFromSheet() {
+  const cageId=document.getElementById('cageId').value.trim();
+  if(!cageId){setSheetStatus('Select a Cage ID first','err');return;}
+  if(!sheetConnected){setSheetStatus('No sheet connected — enter counts manually','warn');return;}
+  const btn=document.getElementById('loadBtn');
+  btn.disabled=true;btn.textContent='⏳ Loading…';setSheetStatus('Fetching from Google Sheet…','');
+  try {
+    const data=await fetchJSONP(`${SHEET_URL}?action=getFlowers&cage_id=${encodeURIComponent(cageId)}`);
+    if(data.error){setSheetStatus(`⚠ ${data.error}`,'err');btn.disabled=false;btn.textContent='⬇ Load from sheet';return;}
+    SPECIES.slice(0,FLIGHT_IDX).forEach((sp,i)=>{
+      flowerCounts[i]=data.counts[sp.label]||0;
+      const el=document.getElementById(`fcv-${i}`);if(el)el.textContent=flowerCounts[i];
+    });
+    document.querySelectorAll('.flower-counter').forEach(el=>el.classList.remove('required-missing'));
+    lastLoadedData=data;
+    const daysText=data.daysAgo===0?'today':data.daysAgo===1?'yesterday':`${data.daysAgo} days ago`;
+    const srcText=data.source==='pot_counts'?'pot data':'cage data';
+    setSheetStatus(`✓ Loaded from ${srcText} (${data.date} — ${daysText})`,data.daysAgo>4?'warn':'ok');
+    updateFlowerTotal();
+  } catch(e){setSheetStatus('⚠ Could not reach sheet — check connection','err');}
+  btn.disabled=false;btn.textContent='⬇ Load from sheet';
+}
+function setSheetStatus(msg,cls){const el=document.getElementById('sheetStatus');el.textContent=msg;el.className='sheet-status'+(cls?` ${cls}`:'');}
+
+// ── Sheet: submit ─────────────────────────────────────────────────────────────
+async function submitToSheet(rows) {
+  if(!sheetConnected){document.getElementById('submit-status').textContent='No sheet connected.';document.getElementById('submit-status').className='err';return;}
+  document.getElementById('submit-btn').disabled=true;
+  document.getElementById('submit-status').textContent='⏳ Submitting…';
+  document.getElementById('submit-status').className='';
+  try {
+    const payload=encodeURIComponent(JSON.stringify({action:'appendSession',rows}));
+    const data=await fetchJSONP(`${SHEET_URL}?action=appendSession&payload=${payload}`);
+    if(data.error)throw new Error(data.error);
+    document.getElementById('submit-status').textContent=`✓ ${data.rowsWritten} rows saved to Google Sheet`;
+    document.getElementById('submit-status').className='ok';
+  } catch(e){
+    document.getElementById('submit-status').textContent=`⚠ Submit failed: ${e.message} — use Download as backup`;
+    document.getElementById('submit-status').className='err';
+  }
+  document.getElementById('submit-btn').disabled=false;
+}
+
+// ── Validation ────────────────────────────────────────────────────────────────
+let pendingToggleIdx = null;
+function validateAndStart(i) {
+  const cageOk=document.getElementById('cageId').value.trim()!=='';
+  const flowersOk=totalFlowers()>0;
+  if(!cageOk){pendingToggleIdx=null;document.getElementById('cage-overlay').classList.add('active');return false;}
+  if(!flowersOk){document.querySelectorAll('.flower-counter').forEach(el=>el.classList.add('required-missing'));alert('Please set at least one flower count before starting.');return false;}
+  return true;
+}
+document.getElementById('cage-cancel').addEventListener('pointerdown',e=>{e.preventDefault();document.getElementById('cage-overlay').classList.remove('active');});
+
+// ── Condition checking ────────────────────────────────────────────────────────
+function checkConditions() {
+  if(sessionOver||sessionPaused)return;
+  const timeDone=sessionElapsed()>=getObsMs();
+  const visitsDone=boutThreshold!==null&&nonFlightVisits()>=boutThreshold;
+  if(overrunCondition!==null){
+    if(overrunCondition==='time'&&visitsDone){endSession();return;}
+    if(overrunCondition==='visits'&&timeDone){endSession();return;}
+    return;
+  }
+  if(timeDone&&visitsDone){endSession();return;}
+  if(timeDone){showConditionDialog('time');return;}
+  if(visitsDone){showConditionDialog('visits');return;}
+}
+function showConditionDialog(which) {
+  pauseSessionInternal();
+  if(which==='time'){
+    document.getElementById('cond-title').textContent='⏱ Time limit reached';
+    document.getElementById('cond-body').textContent=`The ${document.getElementById('obsMin').value}-minute session has ended.`;
+    document.getElementById('cond-sub').textContent=`Visits so far: ${nonFlightVisits()} of ${boutThreshold} needed (${visitationPct().toFixed(1)}%).`;
+  } else {
+    document.getElementById('cond-title').textContent='🌸 Flower threshold reached';
+    document.getElementById('cond-body').textContent=`The bee has visited ${boutPct}% of available flowers (${nonFlightVisits()} visits).`;
+    document.getElementById('cond-sub').textContent=`Time remaining: ${fmt(Math.max(0,getObsMs()-sessionElapsed()))}.`;
+  }
+  document.getElementById('cond-end').dataset.which=which;
+  document.getElementById('cond-overrun').dataset.which=which;
+  document.getElementById('condition-overlay').classList.add('active');
+}
+
+// ── Session control ───────────────────────────────────────────────────────────
+function endSession() {
+  document.getElementById('condition-overlay').classList.remove('active');
+  if(sessionTimeoutId){clearTimeout(sessionTimeoutId);sessionTimeoutId=null;}
+  const now=Date.now();
+  sessionEnd=now;sessionOver=true;overrunCondition=null;
+  if(activeIdx!==null&&state[activeIdx].running)stopFlowerTimer(activeIdx,now);
+  document.getElementById('grid').classList.add('disabled');
+  document.getElementById('startBtn').style.display='none';
+  document.getElementById('pauseBtn').style.display='none';
+  document.getElementById('resumeBtn').style.display='none';
+  document.getElementById('endBtn').style.display='none';
+  renderAll();
+}
+function unlockSession() {
+  // Just unlocks the timers — clock starts on first flower tap
+  sessionReady = true;
+  sessionOver  = false;
+  document.getElementById('grid').classList.remove('disabled');
+  document.getElementById('startBtn').style.display  = 'none';
+  document.getElementById('pauseBtn').style.display  = 'none';
+  document.getElementById('resumeBtn').style.display = 'none';
+  document.getElementById('endBtn').style.display    = 'inline-block';
+  renderAll();
+}
+function startClock(now) {
+  // Called on first flower tap — starts the session countdown
+  boutTotalFlowers = totalFlowers(); boutPct = getThreshPct();
+  boutThreshold    = Math.ceil(boutTotalFlowers * boutPct / 100);
+  overrunCondition = null;
+  sessionStart  = now; sessionOver = false; sessionPaused = false;
+  totalPaused   = 0;   pauseStart  = null;
+  sessionTimeoutId = setTimeout(() => { if(!sessionOver) checkConditions(); }, getObsMs());
+  document.getElementById('pauseBtn').style.display = 'inline-block';
+}
+function pauseSessionInternal() {
+  if(!sessionStart||sessionOver||sessionPaused)return;
+  const now=Date.now();sessionPaused=true;pauseStart=now;
+  if(sessionTimeoutId){clearTimeout(sessionTimeoutId);sessionTimeoutId=null;}
+  if(activeIdx!==null&&state[activeIdx].running)stopFlowerTimer(activeIdx,now);
+}
+function pauseSession(){
+  pauseSessionInternal();
+  document.getElementById('pauseBtn').style.display='none';
+  document.getElementById('resumeBtn').style.display='inline-block';
+  document.getElementById('endBtn').style.display='inline-block';
+  renderAll();
+}
+function resumeSession() {
+  if(!sessionStart||sessionOver||!sessionPaused)return;
+  const now=Date.now();totalPaused+=now-pauseStart;pauseStart=null;sessionPaused=false;
+  const remaining=Math.max(0,getObsMs()-sessionElapsed());
+  sessionTimeoutId=setTimeout(()=>{if(!sessionOver)checkConditions();},remaining);
+  document.getElementById('pauseBtn').style.display='inline-block';
+  document.getElementById('resumeBtn').style.display='none';
+  document.getElementById('endBtn').style.display='inline-block';
+  renderAll();
+}
+
+// ── Flower timer ──────────────────────────────────────────────────────────────
+function stopFlowerTimer(i,now){
+  const s=state[i];if(!s.running)return;
+  s.elapsed+=now-s.startTime;s.running=false;
+  const entry=[...log].reverse().find(e=>e.id===i&&!e.endTime);
+  if(entry)entry.endTime=now;
+  if(activeIdx===i)activeIdx=null;
+}
+function startFlowerTimer(i,now){
+  const s=state[i];s.running=true;s.startTime=now;s.visitCount++;seq++;
+  log.push({seq,id:i,startTime:now,endTime:null,deleted:false});
+  activeIdx=i;
+}
+function toggle(i){
+  if(sessionOver||sessionPaused||!sessionReady)return;
+  doToggle(i);
+}
+function doToggle(i){
+  if(sessionOver||sessionPaused||!sessionReady)return;
+  const now=Date.now();
+  if(!sessionStart) startClock(now); // first tap starts the clock
+  if(state[i].running){
+    // Same species tap: close current visit, open new one immediately
+    stopFlowerTimer(i,now);
+    startFlowerTimer(i,now);
+  } else {
+    // Different species: stop current, start new
+    if(activeIdx!==null&&state[activeIdx].running)stopFlowerTimer(activeIdx,now);
+    startFlowerTimer(i,now);
+  }
+  renderAll();checkConditions();
+}
+
+// ── Log editing ───────────────────────────────────────────────────────────────
+function deleteLogEntry(seq) {
+  const entry = log.find(e => e.seq === seq);
+  if (!entry) return;
+  entry.deleted = true;
+  // If it was running, stop it cleanly
+  if (entry.id === activeIdx && state[entry.id].running) stopFlowerTimer(entry.id, Date.now());
+  renderAll();
+}
+
+function openEditSpecies(seq) {
+  editTargetSeq = seq;
+  const entry = log.find(e => e.seq === seq);
+  if (!entry) return;
+  const grid = document.getElementById('edit-species-grid');
+  grid.innerHTML = '';
+  SPECIES.forEach((sp, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'edit-sp-btn';
+    btn.style.background = sp.bg;
+    btn.style.borderColor = sp.border;
+    btn.style.color = sp.text;
+    btn.textContent = sp.label;
+    if (i === entry.id) btn.style.boxShadow = `0 0 0 3px ${sp.border}`;
+    btn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const entry = log.find(e => e.seq === editTargetSeq);
+      if (entry) {
+        // Update visitCount on old and new species state
+        state[entry.id].visitCount = Math.max(0, state[entry.id].visitCount - 1);
+        entry.id = i;
+        state[i].visitCount++;
+      }
+      document.getElementById('edit-overlay').classList.remove('active');
+      editTargetSeq = null;
+      renderAll();
+    });
+    grid.appendChild(btn);
+  });
+  document.getElementById('edit-overlay').classList.add('active');
+}
+
+document.getElementById('edit-cancel').addEventListener('pointerdown', e => {
+  e.preventDefault();
+  document.getElementById('edit-overlay').classList.remove('active');
+  editTargetSeq = null;
+});
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderSessionBar() {
+  const bar=document.getElementById('sessionBar');
+  if(!sessionReady&&!sessionStart){bar.innerHTML='<span class="session-idle">Press ▶ Start Session when ready</span>';return;}
+  if(sessionReady&&!sessionStart){bar.innerHTML='<span class="session-live">✓ Ready — press a flower button to begin</span>';return;}
+  if(sessionOver){bar.innerHTML=`<span class="session-ended">⏹ Session ended · ${toSeconds(sessionElapsed())}s</span>`;return;}
+  if(sessionPaused&&document.getElementById('condition-overlay').classList.contains('active')){bar.innerHTML='<span class="session-warn">⚠️ Condition reached — see dialog</span>';return;}
+  if(sessionPaused){bar.innerHTML=`<span class="session-paused">⏸ Paused · ${fmt(Math.max(0,getObsMs()-sessionElapsed()))} remaining</span>`;return;}
+  if(overrunCondition==='time'){bar.innerHTML='<span class="session-overrun">▶ Overrun: waiting for visit threshold</span>';return;}
+  const rem=Math.max(0,getObsMs()-sessionElapsed());
+  bar.innerHTML=`<span class="${rem<60000?'session-warn':'session-live'}">⏱ ${fmt(rem)} remaining</span>`;
+}
+function renderVisitBar() {
+  const bar=document.getElementById('visitBar');
+  if(!sessionStart||boutThreshold===null){bar.textContent='';return;}
+  const visits=nonFlightVisits(),pct=visitationPct();
+  const cls=overrunCondition==='visits'?'session-overrun':(visits>=boutThreshold?'session-ended':'');
+  const extra=overrunCondition==='visits'?' — overrun: waiting for time':'';
+  bar.innerHTML=`<span class="${cls}">🌸 ${visits}/${boutThreshold} visits · ${pct.toFixed(1)}%${extra}</span>`;
+}
+function renderStatus() {
+  const bar=document.getElementById('statusBar');bar.style.color='#888';
+  if(sessionOver){bar.textContent='Session complete — export, submit, or reset to start again';bar.style.color='#C0201E';return;}
+  if(sessionPaused){bar.textContent='Session paused';return;}
+  if(activeIdx!==null&&state[activeIdx].running){bar.innerHTML=`<span class="active-indicator">● Visiting ${SPECIES[activeIdx].label}</span>`;return;}
+  bar.textContent=sessionStart?'No active visit':'';
+}
+function renderGrid() {
+  const grid=document.getElementById('grid');grid.innerHTML='';
+  state.forEach((s,i)=>{
+    const sp=SPECIES[i],live=s.running?s.elapsed+(Date.now()-s.startTime):s.elapsed;
+    const el=document.createElement('button');el.className='btn-timer';
+    el.style.background=sp.bg;el.style.borderColor=s.running?sp.border:sp.border+'55';
+    el.style.boxShadow=s.running?`0 0 0 2px ${sp.border}`:'none';
+    el.innerHTML=`<span class="btn-label" style="color:${sp.text}">${sp.label}</span><span class="btn-time" style="color:${sp.text}">${fmt(live)}</span><span class="btn-count" style="color:${sp.text}">${s.visitCount} visit${s.visitCount!==1?'s':''}</span>`;
+    el.addEventListener('pointerdown',e=>{e.preventDefault();toggle(i);});
+    grid.appendChild(el);
+  });
+}
+function renderLog() {
+  const logEl=document.getElementById('log');
+  if(!log.length){logEl.innerHTML='<div class="log-empty">Press a flower button to start tracking</div>';return;}
+  logEl.innerHTML=log.slice().reverse().map(e=>{
+    const sp=SPECIES[e.id],dur=e.endTime?fmt(e.endTime-e.startTime):null;
+    const deletedClass=e.deleted?' deleted':'';
+    const editBtns=e.endTime&&!e.deleted
+      ? `<div class="log-actions"><button class="log-btn" data-seq="${e.seq}" data-action="edit">✎</button><button class="log-btn del" data-seq="${e.seq}" data-action="delete">✕</button></div>`
+      : (e.deleted?'<span style="font-size:10px;color:#aaa">deleted</span>':'');
+    return`<div class="log-row${deletedClass}">
+      <span class="log-seq" style="background:${sp.bg};color:${sp.text}">${e.seq}</span>
+      <div class="log-main">
+        <div class="log-sp"><span class="dot" style="background:${sp.dot}"></span>${sp.label}</div>
+        <div class="log-meta">${fmtTime(e.startTime)} · ${dur||'live'}</div>
+      </div>
+      <span class="log-dur${dur?'':' live'}">${dur||'● live'}</span>
+      ${editBtns}
+    </div>`;
+  }).join('');
+}
+function renderFlowerCounters() {
+  const el=document.getElementById('flowerCounters');el.innerHTML='';
+  SPECIES.slice(0,FLIGHT_IDX).forEach((sp,i)=>{
+    const div=document.createElement('div');div.className='flower-counter';div.id=`fc-wrap-${i}`;div.style.borderColor=sp.border+'88';
+    div.innerHTML=`<span class="fc-label" style="color:${sp.text}">${sp.label}</span><div class="fc-controls"><button class="fc-btn" data-i="${i}" data-d="-1" style="border-color:${sp.border}88;color:${sp.text}">−</button><span class="fc-val" id="fcv-${i}" style="color:${sp.text}">${flowerCounts[i]}</span><button class="fc-btn" data-i="${i}" data-d="1" style="border-color:${sp.border}88;color:${sp.text}">+</button></div>`;
+    el.appendChild(div);
+  });
+  updateFlowerTotal();
+}
+function updateFlowerTotal() {
+  const tot=totalFlowers(),pct=getThreshPct(),thresh=tot>0?Math.ceil(tot*pct/100):0;
+  document.getElementById('flowerTotal').textContent=tot>0?`Total: ${tot} · threshold: ${thresh} visits (${pct}%)`:'';
+}
+function renderAll() {
+  renderSessionBar();renderVisitBar();renderStatus();renderGrid();renderLog();
+  if(document.getElementById('fs-overlay').classList.contains('active')){
+    renderFsGrid();renderFsCountdown();renderFsVisitation();renderFsInfo();renderFsStatus();
+  }
+}
+
+// ── Log edit button events (delegated) ────────────────────────────────────────
+document.getElementById('log').addEventListener('pointerdown', e => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  e.preventDefault();
+  const seq = parseInt(btn.dataset.seq);
+  if (btn.dataset.action === 'delete') deleteLogEntry(seq);
+  if (btn.dataset.action === 'edit')   openEditSpecies(seq);
+});
+
+// ── Flower counter events ─────────────────────────────────────────────────────
+document.getElementById('flowerCounters').addEventListener('pointerdown',e=>{
+  const btn=e.target.closest('.fc-btn');if(!btn)return;e.preventDefault();
+  if(sessionStart)return;
+  const i=parseInt(btn.dataset.i),d=parseInt(btn.dataset.d);
+  flowerCounts[i]=Math.max(0,flowerCounts[i]+d);
+  document.getElementById(`fcv-${i}`).textContent=flowerCounts[i];
+  if(totalFlowers()>0)document.querySelectorAll('.flower-counter').forEach(el=>el.classList.remove('required-missing'));
+  updateFlowerTotal();
+});
+document.getElementById('threshPct').addEventListener('input',updateFlowerTotal);
+document.getElementById('loadBtn').addEventListener('pointerdown',e=>{e.preventDefault();loadFromSheet();});
+
+// ── Start Session button ──────────────────────────────────────────────────────
+document.getElementById('startBtn').addEventListener('pointerdown', e => {
+  e.preventDefault();
+  const cageOk    = document.getElementById('cageId').value.trim() !== '';
+  const flowersOk = totalFlowers() > 0;
+  if (!cageOk) { document.getElementById('cage-overlay').classList.add('active'); return; }
+  if (!flowersOk) { document.querySelectorAll('.flower-counter').forEach(el=>el.classList.add('required-missing')); alert('Please set at least one flower count before starting.'); return; }
+  unlockSession();
+});
+
+// ── End Session button ────────────────────────────────────────────────────────
+document.getElementById('endBtn').addEventListener('pointerdown', e => {
+  e.preventDefault();
+  endSession();
+});
+
+// ── Pause / Resume ────────────────────────────────────────────────────────────
+document.getElementById('pauseBtn').addEventListener('pointerdown',e=>{e.preventDefault();pauseSession();});
+document.getElementById('resumeBtn').addEventListener('pointerdown',e=>{e.preventDefault();resumeSession();});
+
+// ── Condition dialog ──────────────────────────────────────────────────────────
+document.getElementById('cond-end').addEventListener('pointerdown',e=>{e.preventDefault();document.getElementById('condition-overlay').classList.remove('active');endSession();});
+document.getElementById('cond-overrun').addEventListener('pointerdown',e=>{
+  e.preventDefault();overrunCondition=e.target.dataset.which;
+  document.getElementById('condition-overlay').classList.remove('active');resumeSession();
+});
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+document.getElementById('resetAll').addEventListener('pointerdown',e=>{e.preventDefault();document.getElementById('confirm-overlay').classList.add('active');});
+document.getElementById('confirm-cancel').addEventListener('pointerdown',e=>{e.preventDefault();document.getElementById('confirm-overlay').classList.remove('active');});
+document.getElementById('confirm-ok').addEventListener('pointerdown',e=>{
+  e.preventDefault();document.getElementById('confirm-overlay').classList.remove('active');doReset();
+});
+function doReset() {
+  if(sessionTimeoutId){clearTimeout(sessionTimeoutId);sessionTimeoutId=null;}
+  state.forEach((_,i)=>{stopFlowerTimer(i,Date.now());state[i].elapsed=0;state[i].visitCount=0;});
+  log=[];seq=0;activeIdx=null;
+  sessionStart=null;sessionEnd=null;sessionOver=false;
+  sessionPaused=false;pauseStart=null;totalPaused=0;sessionReady=false;
+  boutThreshold=null;boutTotalFlowers=null;boutPct=null;overrunCondition=null;
+  // Keep all metadata: observer, cageId, bbId, obsMin, threshPct, flowerCounts
+  // Only clear session-specific data
+  document.getElementById('sessionNotes').value='';
+  document.getElementById('grid').classList.add('disabled'); // locked until Start pressed again
+  document.getElementById('startBtn').style.display='inline-block';
+  document.getElementById('pauseBtn').style.display='none';
+  document.getElementById('resumeBtn').style.display='none';
+  document.getElementById('endBtn').style.display='none';
+  document.getElementById('export-area').style.display='none';
+  document.getElementById('submit-status').textContent='';
+  renderAll();
+}
+document.getElementById('clearLog').onclick=()=>{log=[];seq=0;document.getElementById('export-area').style.display='none';renderLog();};
+
+// ── Build export rows ─────────────────────────────────────────────────────────
+function buildRows() {
+  const observer=document.getElementById('observerId').value.trim()||'NA';
+  const cageId  =document.getElementById('cageId').value.trim()||'NA';
+  const bbRaw  = document.getElementById('bbId').value.trim();
+  const bbId   = bbRaw ? `BB_${bbRaw}` : 'NA';
+  const notes   =document.getElementById('sessionNotes').value.trim().replace(/\t|\n/g,' ')||'NA';
+  // Only include non-deleted completed visits
+  const completed=log.filter(e=>e.endTime&&!e.deleted);
+  if(!completed.length)return null;
+  const switches=computeSwitches(completed);
+  const sessLenMs=sessionEnd?(sessionEnd-sessionStart)-totalPaused:sessionElapsed();
+  const sessLenSec=toSeconds(sessLenMs);
+  const sessVisit=visitationPct().toFixed(1);
+  return completed.map((e,idx)=>{
+    const durS=((e.endTime-e.startTime)/1000).toFixed(3);
+    const sw=switches[idx];
+    const nFlowers=e.id<FLIGHT_IDX?flowerCounts[e.id]:'NA';
+    return[fmtDate(e.startTime),fmtTime(e.startTime),observer,cageId,bbId,
+           SPECIES[e.id].label,durS,sw,nFlowers,sessLenSec,sessVisit,notes];
+  });
+}
+
+const HEADER='Date\tTime\tObserver\tCage_ID\tBB_ID\tPlant_species\tHandling_time_s\tSwitch\tn_flowers\tSession_length_s\tSession_visitation_pct\tNotes';
+
+document.getElementById('exportBtn').onclick=()=>{
+  const rows=buildRows();
+  if(!rows){alert('No completed visits to export yet.');return;}
+  document.getElementById('export-header').textContent=HEADER;
+  document.getElementById('csv-out').value=rows.map(r=>r.join('\t')).join('\n');
+  document.getElementById('submit-status').textContent='';
+  document.getElementById('submit-btn').disabled=false;
+  const ea=document.getElementById('export-area');
+  ea.style.display='block';
+  ea.scrollIntoView({behavior:'smooth',block:'nearest'});
+};
+
+// ── Download CSV ──────────────────────────────────────────────────────────────
+document.getElementById('download-btn').addEventListener('pointerdown', e => {
+  e.preventDefault();
+  const rows = buildRows();
+  if (!rows) { alert('No completed visits to export yet.'); return; }
+  const content  = rows.map(r => r.join('\t')).join('\n');
+  const blob     = new Blob([content], { type: 'text/tab-separated-values' });
+  const url      = URL.createObjectURL(blob);
+  const a        = document.createElement('a');
+  const cageId   = document.getElementById('cageId').value.trim() || 'unknown';
+  const bbId     = document.getElementById('bbId').value.trim()   || 'unknown';
+  const dateStr  = fmtDate(Date.now());
+  a.href         = url;
+  a.download     = `bb_${cageId}_${bbId}_${dateStr}.tsv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// ── Submit to sheet ───────────────────────────────────────────────────────────
+document.getElementById('submit-btn').addEventListener('pointerdown', async e => {
+  e.preventDefault();
+  const rows=buildRows();
+  if(!rows){alert('No completed visits to submit yet.');return;}
+  await submitToSheet(rows);
+});
+
+// ── RAF loop ──────────────────────────────────────────────────────────────────
+requestAnimationFrame(function loop(){
+  if(sessionStart&&!sessionOver&&!sessionPaused){renderSessionBar();renderVisitBar();renderFsCountdown();renderFsVisitation();}
+  if(state.some(s=>s.running)){renderGrid();renderLog();renderFsGrid();renderFsStatus();}
+  requestAnimationFrame(loop);
+});
+
+// ── Fullscreen ────────────────────────────────────────────────────────────────
+function renderFsGrid(){
+  const grid=document.getElementById('fs-grid'),disabled=sessionOver||sessionPaused;
+  grid.innerHTML='';
+  state.forEach((s,i)=>{
+    const sp=SPECIES[i],live=s.running?s.elapsed+(Date.now()-s.startTime):s.elapsed;
+    const el=document.createElement('button');
+    el.className='fs-btn'+(disabled?' fsdisabled':'');
+    el.style.background=sp.bg;el.style.borderColor=s.running?sp.border:sp.border+'55';
+    el.style.boxShadow=s.running?`0 0 0 3px ${sp.border}`:'none';
+    el.innerHTML=`<span class="fs-label" style="color:${sp.text}">${sp.label}</span><span class="fs-time" style="color:${sp.text}">${fmt(live)}</span><span class="fs-count" style="color:${sp.text}">${s.visitCount} visit${s.visitCount!==1?'s':''}</span>`;
+    el.addEventListener('pointerdown',e=>{e.preventDefault();toggle(i);renderFsGrid();renderFsCountdown();renderFsVisitation();renderFsStatus();});
+    grid.appendChild(el);
+  });
+}
+function renderFsCountdown(){
+  const el=document.getElementById('fs-countdown');
+  if(!sessionStart){el.innerHTML='<span style="color:#aaa;font-size:20px;font-weight:400">Press to start</span>';return;}
+  if(sessionOver){el.innerHTML='<span style="color:#C0201E">⏹ Ended</span>';return;}
+  if(overrunCondition==='time'){el.innerHTML='<span style="color:#7B3F9E">▶ Overrun</span>';return;}
+  if(sessionPaused){el.innerHTML=`<span style="color:#888">⏸ ${fmt(Math.max(0,getObsMs()-sessionElapsed()))}</span>`;return;}
+  const rem=Math.max(0,getObsMs()-sessionElapsed());
+  el.innerHTML=`<span style="color:${rem<60000?'#C47A08':'#1A5FAD'}">⏱ ${fmt(rem)}</span>`;
+}
+function renderFsVisitation(){
+  const el=document.getElementById('fs-visitation');
+  if(!sessionStart||boutThreshold===null){el.textContent='';return;}
+  const visits=nonFlightVisits(),pct=visitationPct(),done=visits>=boutThreshold;
+  const color=overrunCondition==='visits'?'#7B3F9E':(done?'#C0201E':'#555');
+  el.innerHTML=`<span style="color:${color}">🌸 ${pct.toFixed(0)}%</span>`;
+}
+function renderFsInfo(){
+  const pills=document.getElementById('fs-info-pills');
+  const observer=document.getElementById('observerId').value.trim();
+  const cageId=document.getElementById('cageId').value.trim();
+  const bbRaw2 = document.getElementById('bbId').value.trim();
+  const bbId   = bbRaw2 ? `BB_${bbRaw2}` : '';
+  const obsMin=document.getElementById('obsMin').value.trim();
+  pills.innerHTML=[
+    observer?{label:'Observer',val:observer}:null,
+    cageId?{label:'Cage',val:cageId}:null,
+    bbId?{label:'BB',val:bbId}:null,
+    obsMin?{label:'Duration',val:obsMin+' min'}:null,
+  ].filter(Boolean).map(i=>`<span class="fs-pill"><span>${i.label}</span>${i.val}</span>`).join('');
+}
+function renderFsStatus(){
+  const el=document.getElementById('fs-status');
+  if(sessionOver){el.innerHTML='<span style="color:#C0201E">Session complete</span>';return;}
+  if(sessionPaused){el.innerHTML='<span style="color:#888">⏸ Paused</span>';return;}
+  if(activeIdx!==null&&state[activeIdx].running){el.innerHTML=`<span style="color:#0E7A50">● Visiting ${SPECIES[activeIdx].label}</span>`;return;}
+  el.textContent=sessionStart?'No active visit':'';el.style.color='#888';
+}
+function openFs(){
+  // Entering field mode counts as pressing Start Session
+  if(!sessionReady&&!sessionStart&&!sessionOver){
+    const cageOk    = document.getElementById('cageId').value.trim() !== '';
+    const flowersOk = totalFlowers() > 0;
+    if(cageOk && flowersOk) unlockSession();
+  }
+  document.getElementById('fs-overlay').classList.add('active');
+  const d=document.documentElement;
+  if(d.requestFullscreen)d.requestFullscreen().catch(()=>{});
+  else if(d.webkitRequestFullscreen)d.webkitRequestFullscreen();
+  if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('portrait').catch(()=>{});
+  renderFsGrid();renderFsCountdown();renderFsVisitation();renderFsInfo();renderFsStatus();
+  document.body.style.overflow='hidden';
+}
+function closeFs(){
+  document.getElementById('fs-overlay').classList.remove('active');
+  if(document.exitFullscreen)document.exitFullscreen().catch(()=>{});
+  else if(document.webkitExitFullscreen)document.webkitExitFullscreen();
+  document.body.style.overflow='';
+}
+document.getElementById('fsBtn').addEventListener('pointerdown',e=>{e.preventDefault();openFs();});
+document.getElementById('fs-exit').addEventListener('pointerdown',e=>{e.preventDefault();closeFs();});
+document.getElementById('fs-overlay').addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+document.getElementById('fs-overlay').addEventListener('wheel',e=>e.preventDefault(),{passive:false});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+renderFlowerCounters();
+document.getElementById('grid').classList.add('disabled'); // locked until Start Session
+renderAll();
+setTimeout(loadCageList,300);
+document.getElementById('cageId').addEventListener('focus',loadCageList);
+document.getElementById('cageId').addEventListener('mousedown',loadCageList);
+if(!sheetConnected){setSheetStatus('No sheet connected — enter counts manually','warn');}
+</script>
+</body>
+</html>
